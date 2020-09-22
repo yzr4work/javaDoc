@@ -1,9 +1,9 @@
 package com.yzr.speechmatching.model;
 
-public class RespModel {
+public class RespModel<T> {
     private int code;
     private String msg;
-    private Object data;
+    private T data;
     final static int SUCCESS_CODE = 0;
     final static String SUCCESS_MSG = "success";
     final static int FAIL_CODE = 1;
@@ -29,7 +29,7 @@ public class RespModel {
         return data;
     }
 
-    public void setData (Object data) {
+    public void setData (T data) {
         this.data = data;
     }
 

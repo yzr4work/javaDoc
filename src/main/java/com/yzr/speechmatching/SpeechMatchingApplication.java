@@ -1,6 +1,8 @@
 package com.yzr.speechmatching;
 
+import com.yzr.speechmatching.model.JavaApiInfo;
 import com.yzr.speechmatching.util.JavaDocUse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -8,16 +10,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.yzr.speechmatching.util.JavaDocUse.show;
 
@@ -30,6 +30,9 @@ public class SpeechMatchingApplication {
 
     private static final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
+    @Autowired
+    private Environment env;
+
     @Bean
     public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
         return args -> {
@@ -38,7 +41,19 @@ public class SpeechMatchingApplication {
             //所有controller
             Map<String, Object> controllerBeansMap = ctx.getBeansWithAnnotation(Controller.class);
             controllerBeansMap.putAll(ctx.getBeansWithAnnotation(RestController.class));
-            System.out.println(" controller size : " + controllerBeansMap.size());
+            if (controllerBeansMap.size() == 0){
+                return;
+            }
+            String token  = "客户端token";
+            String serverPort = env.getProperty("server.port");
+            if ("80".equals(serverPort)){
+                token = "微服务token";
+            }else if (env.getProperty("wb.clusterName") != null){
+                token = "游戏token";
+            }else if (env.getProperty("spring.application.name").contains("admin") || env.getProperty("spring.application.name").contains("manager") ){
+                token = "后台token";
+            }
+
             //遍历每个controller
             for (Map.Entry<String, Object> controllerBeanEntry : controllerBeansMap.entrySet()) {
                 System.out.println(" current controller is : " + controllerBeanEntry.getKey());
@@ -60,6 +75,7 @@ public class SpeechMatchingApplication {
                 //方法上注解
                 Method[] methods = controllerClass.getMethods();
                 String[] finalControllerBaseUrl = controllerBaseUrl;
+                AtomicReference<String> finalToken = new AtomicReference<String>(token);
                 Arrays.asList(methods).forEach(method -> {
                     if (! method.getDeclaringClass().getName().equals(controllerClass.getName())){
                         return;
@@ -85,27 +101,28 @@ public class SpeechMatchingApplication {
                         Arrays.asList(finalControllerBaseUrl).forEach(baseUrl -> {
                             if (finalUrl.length > 0){
                                 System.out.println("url : ");
-                                Arrays.asList(finalUrl).forEach(eachUrl -> System.out.println(baseUrl + eachUrl));
-                                //处理每个请求路径的方法参数 返回值参数
-                                //参数类型数组
-                                Class<?>[] parameterTypes = method.getParameterTypes();
-                                //参数名称数组
-                                String[] parameters = parameterNameDiscoverer.getParameterNames(method);
-                                //参数注解 二维数组
-                                Annotation[][] parameterAnnotations = method.getParameterAnnotations();
-                                String classPath = controllerClass.getResource("/").getPath();
-
-                                //从注释中获取参数信息
-                                //System.out.println("编译后文件夹地址 : " + classPath);
-                                //System.out.println("当前类的源码文件地址 : " +  modelPath + "/src/main/java/" + controllerClass.getName().replace(".","/") + ".java");
-
-                                com.sun.tools.javadoc.Main.execute(new String[] {"-doclet",
-                                        JavaDocUse.Doclet.class.getName(),
-                                        "-encoding","utf-8","-private","-classpath",
-                                        classPath,
-                                        classPath.replace("/target/classes/","") + "/src/main/java/" +  controllerClass.getName().replace(".","/") + ".java"});
-                                show(classPath, 1);
-
+                                Arrays.asList(finalUrl).forEach(eachUrl -> {
+                                    String controllerUrl =  baseUrl + eachUrl;
+                                    System.out.println(controllerUrl);
+                                    if (finalToken.get().equals("客户端token") && controllerUrl.startsWith("/web/webApi")){
+                                        finalToken.set("H5token");
+                                    }
+                                    String classPath = controllerClass.getResource("/").getPath();
+                                    com.sun.tools.javadoc.Main.execute(new String[] {"-doclet",
+                                            JavaDocUse.Doclet.class.getName(),
+                                            "-encoding","utf-8","-classpath",
+                                            classPath,
+                                            classPath.replace("/target/classes/","") + "/src/main/java/" +  controllerClass.getName().replace(".","/") + ".java"});
+                                    JavaApiInfo javaApiInfo = new JavaApiInfo();
+                                    javaApiInfo.setPath(controllerUrl);
+                                    if (postMappingOnMethod != null || (requestMappingOnMethod != null && Arrays.asList(requestMappingOnMethod.method()).contains(RequestMethod.POST))){
+                                        javaApiInfo.setMethod("POST");
+                                    }else {
+                                        javaApiInfo.setMethod("GET");
+                                    }
+                                    javaApiInfo.setToken(finalToken.get());
+                                    show(classPath, javaApiInfo,method.getName());
+                                });
                             }
                         });
                     }

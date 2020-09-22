@@ -1,5 +1,8 @@
 package com.yzr.speechmatching.model;
 
+import com.sun.istack.internal.NotNull;
+import com.sun.istack.internal.Nullable;
+
 import java.util.List;
 
 /**
@@ -9,10 +12,12 @@ public class User {
     /**
      * uid111
      */
+    @Nullable
     private String uid;
     /**
      * 用户名
      */
+    @NotNull
     private String userName;
     /**
      * 年龄
