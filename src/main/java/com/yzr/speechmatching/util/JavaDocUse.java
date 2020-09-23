@@ -5,6 +5,7 @@ import com.sun.javadoc.*;
 import com.yzr.speechmatching.model.*;
 import org.springframework.util.CollectionUtils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -61,6 +62,13 @@ public class JavaDocUse {
                 }
                 //resp 处理返回参数
                 resp(classBasePath, linkTag == null ? null : linkTag.referencedClass(), methodDoc.returnType(), apiInfo);
+            }
+            //同步到Yapi
+            try {
+                boolean result = ImportYapiUtil.importToYapi(apiInfo);
+                System.out.println("同步接口 " + apiInfo.getPath() + " 结果 : " + result);
+            } catch (IOException e) {
+                System.err.println("同步 yapi 平台发生IO异常 数据为 : " + JSON.toJSONString(apiInfo));
             }
         }
     }
@@ -152,17 +160,6 @@ public class JavaDocUse {
         System.out.println(fieldDoc.name() + "   " + type + "   " + fieldDoc.commentText());
         return bodyProperties;
     }
-
-//    //集合
-//    private static void collection (String classBasePath, ClassDoc classDoc) {
-//        //说明是集合里面的元素
-//        Tag[] seeTags = classDoc.tags("@see");
-//        if (seeTags.length > 0) {
-//            //对象
-//            SeeTag seeTag = (SeeTag) seeTags[0];
-//            obj(classBasePath, seeTag.referencedClass());
-//        }
-//    }
 
     //对象
     private static BodyJson obj (String classBasePath, ClassDoc linkClassDoc) {

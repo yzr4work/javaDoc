@@ -44,14 +44,22 @@ public class SpeechMatchingApplication {
             if (controllerBeansMap.size() == 0){
                 return;
             }
-            String token  = "客户端token";
             String serverPort = env.getProperty("server.port");
-            if ("80".equals(serverPort)){
-                token = "微服务token";
-            }else if (env.getProperty("wb.clusterName") != null){
-                token = "游戏token";
-            }else if (env.getProperty("spring.application.name").contains("admin") || env.getProperty("spring.application.name").contains("manager") ){
-                token = "后台token";
+            String applicationName = env.getProperty("spring.application.name");
+
+            String h5Token = env.getProperty("h5.token");
+            String apiToken = env.getProperty("api.token");
+            String rpcToken = env.getProperty("rpc.token");
+            String managerToken = env.getProperty("manager.token");
+            String gameToken = env.getProperty("game.token");
+
+            String token  = apiToken;
+            if (env.getProperty("wb.clusterName") != null){
+                token = gameToken;
+            }else if ("80".equals(serverPort)){
+                token = rpcToken;
+            } else if (applicationName.contains("admin") || applicationName.contains("manager") ){
+                token = managerToken;
             }
 
             //遍历每个controller
@@ -104,8 +112,8 @@ public class SpeechMatchingApplication {
                                 Arrays.asList(finalUrl).forEach(eachUrl -> {
                                     String controllerUrl =  baseUrl + eachUrl;
                                     System.out.println(controllerUrl);
-                                    if (finalToken.get().equals("客户端token") && controllerUrl.startsWith("/web/webApi")){
-                                        finalToken.set("H5token");
+                                    if (finalToken.get().equals(apiToken) && controllerUrl.startsWith("/web/webApi")){
+                                        finalToken.set(h5Token);
                                     }
                                     String classPath = controllerClass.getResource("/").getPath();
                                     com.sun.tools.javadoc.Main.execute(new String[] {"-doclet",
@@ -121,6 +129,7 @@ public class SpeechMatchingApplication {
                                         javaApiInfo.setMethod("GET");
                                     }
                                     javaApiInfo.setToken(finalToken.get());
+                                    javaApiInfo.setApplicationName(applicationName);
                                     show(classPath, javaApiInfo,method.getName());
                                 });
                             }

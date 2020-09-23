@@ -53,6 +53,10 @@ public class JavaApiInfo {
      * 请求参数 是否json格式
      */
     private boolean req_body_is_json_schema;
+    /**
+     * 项目名称 对应文件夹名称
+     */
+    private String applicationName;
 
     private final String res_body_type = "json";
 
@@ -154,5 +158,13 @@ public class JavaApiInfo {
 
     public void setStatus (String status) {
         this.status = status;
+    }
+
+    public String getApplicationName () {
+        return applicationName;
+    }
+
+    public void setApplicationName (String applicationName) {
+        this.applicationName = applicationName;
     }
 }
