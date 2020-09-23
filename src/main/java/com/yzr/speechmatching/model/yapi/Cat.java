@@ -1,4 +1,4 @@
-package com.yzr.speechmatching.model;
+package com.yzr.speechmatching.model.yapi;
 
 public class Cat {
     /**

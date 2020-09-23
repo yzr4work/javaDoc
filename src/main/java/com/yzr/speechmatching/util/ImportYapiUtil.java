@@ -2,8 +2,8 @@ package com.yzr.speechmatching.util;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.yzr.speechmatching.model.Cat;
-import com.yzr.speechmatching.model.JavaApiInfo;
+import com.yzr.speechmatching.model.yapi.Cat;
+import com.yzr.speechmatching.model.yapi.JavaApiInfo;
 import okhttp3.*;
 import org.springframework.util.CollectionUtils;
 

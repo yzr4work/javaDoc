@@ -2,7 +2,7 @@ package com.yzr.speechmatching.util;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.javadoc.*;
-import com.yzr.speechmatching.model.*;
+import com.yzr.speechmatching.model.yapi.*;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;

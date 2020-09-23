@@ -1,6 +1,6 @@
 package com.yzr.speechmatching;
 
-import com.yzr.speechmatching.model.JavaApiInfo;
+import com.yzr.speechmatching.model.yapi.JavaApiInfo;
 import com.yzr.speechmatching.util.JavaDocUse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -8,8 +8,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +25,6 @@ public class SpeechMatchingApplication {
     public static void main (String[] args) {
         SpringApplication.run(SpeechMatchingApplication.class, args);
     }
-
-    private static final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
     @Autowired
     private Environment env;
