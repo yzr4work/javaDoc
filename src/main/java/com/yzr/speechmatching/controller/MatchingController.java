@@ -19,21 +19,20 @@ public class MatchingController {
      *  test方法注释
      * @param uid 用户uid
      * @param status 状态
-     * @param user 用户信息  {@link User user}
      * @nullable status,uid
-     * @status true
+     * @status false
      * @return 返回信息 {@link User resp}
      *
      */
     @PostMapping(value = {"/test"})
     public RespModel<User> test(HttpServletRequest request){
-
-        return RespModel.success(new User());
+        RespModel respModel = new RespModel();
+        return respModel.success(new User());
     }
 
 
     /**
-     *  test方法注释
+     *  test21234方法注释
      * @param user 用户信息  {@link User user}
      * @status true
      * @return 返回信息 {@link User resp}
@@ -41,7 +40,14 @@ public class MatchingController {
      */
     @PostMapping(value = {"/test2"})
     public RespModel<User> test2(HttpServletRequest request){
-        return RespModel.success(new User());
+        RespModel respModel = new RespModel();
+        return respModel.success(new User());
     }
 
+
+    @PostMapping(value = {"/test3"})
+    public RespModel<User> test3(HttpServletRequest request){
+        RespModel respModel = new RespModel();
+        return respModel.success(new User());
+    }
 }

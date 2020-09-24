@@ -42,6 +42,9 @@ public class SpeechMatchingApplication {
             }
             String serverPort = env.getProperty("server.port");
             String applicationName = env.getProperty("spring.application.name");
+            if (applicationName == null ){
+                applicationName = "";
+            }
 
             String h5Token = env.getProperty("h5.token");
             String apiToken = env.getProperty("api.token");
@@ -79,7 +82,8 @@ public class SpeechMatchingApplication {
                 //方法上注解
                 Method[] methods = controllerClass.getMethods();
                 String[] finalControllerBaseUrl = controllerBaseUrl;
-                AtomicReference<String> finalToken = new AtomicReference<String>(token);
+                AtomicReference<String> finalToken = new AtomicReference<>(token);
+                String finalApplicationName = applicationName;
                 Arrays.asList(methods).forEach(method -> {
                     if (! method.getDeclaringClass().getName().equals(controllerClass.getName())){
                         return;
@@ -125,7 +129,7 @@ public class SpeechMatchingApplication {
                                         javaApiInfo.setMethod("GET");
                                     }
                                     javaApiInfo.setToken(finalToken.get());
-                                    javaApiInfo.setApplicationName(applicationName);
+                                    javaApiInfo.setApplicationName(finalApplicationName);
                                     show(classPath, javaApiInfo,method.getName());
                                 });
                             }

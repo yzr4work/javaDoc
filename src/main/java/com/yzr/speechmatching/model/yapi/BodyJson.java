@@ -2,43 +2,69 @@ package com.yzr.speechmatching.model.yapi;
 
 import java.util.Map;
 
+/**
+ * @author yzr
+ */
 public class BodyJson {
-
     /**
      * 类型
      */
-    private String type = "object";
+    private String type;
     /**
-     * 属性
+     * 注释
      */
-    private Map<String, BodyProperties> properties;
+    private String description;
     /**
-     * 必须属性
+     * 集合元素
+     */
+    private BodyJson items;
+    /**
+     * 对象信息
+     */
+    private Map<String, BodyJson> properties;
+    /**
+     * 必须字段
      */
     private String[] required;
 
-    public String getType () {
+
+    public String getType() {
         return type;
     }
 
-    public void setType (String type) {
+    public void setType(String type) {
         this.type = type;
     }
 
-    public Map<String, BodyProperties> getProperties () {
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public BodyJson getItems() {
+        return items;
+    }
+
+    public void setItems(BodyJson items) {
+        this.items = items;
+    }
+
+    public Map<String, BodyJson> getProperties() {
         return properties;
     }
 
-    public void setProperties (Map<String, BodyProperties> properties) {
+    public void setProperties(Map<String, BodyJson> properties) {
         this.properties = properties;
     }
 
-    public String[] getRequired () {
+    public String[] getRequired() {
         return required;
     }
 
-    public void setRequired (String[] required) {
+    public void setRequired(String[] required) {
         this.required = required;
     }
-
 }

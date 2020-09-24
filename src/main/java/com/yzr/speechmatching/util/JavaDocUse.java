@@ -2,7 +2,10 @@ package com.yzr.speechmatching.util;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.javadoc.*;
-import com.yzr.speechmatching.model.yapi.*;
+import com.yzr.speechmatching.model.yapi.BodyJson;
+import com.yzr.speechmatching.model.yapi.JavaApiInfo;
+import com.yzr.speechmatching.model.yapi.ReqForm;
+import com.yzr.speechmatching.model.yapi.ReqHeader;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
@@ -55,7 +58,7 @@ public class JavaDocUse {
                 SeeTag linkTag = null;
                 if (returnTag.inlineTags().length > 1) {
                     Tag tag = returnTag.inlineTags()[1];
-                    if (tag.name().equals("@link")) {
+                    if ("@link".equals(tag.name())) {
                         //取link的对象的class
                         linkTag = (SeeTag) tag;
                     }
@@ -94,7 +97,7 @@ public class JavaDocUse {
             nullAbleParamList = Arrays.asList(nullTagParamStr.split(","));
         }
         if (methodParams.length > 0) {
-            List<ReqBodyForm> reqBodyForms = new ArrayList<>();
+            List<ReqForm> reqForms = new ArrayList<>();
             for (Tag methodParam : methodParams) {
                 ParamTag paramTag = (ParamTag) methodParam;
                 //请求参数处理
@@ -105,31 +108,37 @@ public class JavaDocUse {
                     //fixme  参数中包含多个对象的引用连接 存在覆盖问题
                     apiInfo.setReq_body_is_json_schema(true);
                     apiInfo.setRes_body("json");
-                    BodyJsonWithSchema bodyJsonWithSchema = new BodyJsonWithSchema(obj(classBasePath, linkTag.referencedClass()));
                     //序列化 成 json字符串
-                    apiInfo.setReq_body_other(JSON.toJSONString(bodyJsonWithSchema));
+                    apiInfo.setReq_body_other(JSON.toJSONString(obj(classBasePath, linkTag.referencedClass())));
+                    ReqHeader[] reqHeaders = new ReqHeader[1];
+                    List<ReqHeader> reqHeaderList = Collections.singletonList(new ReqHeader("Content-Type","application/json"));
+                    apiInfo.setReq_body_type("json");
+                    apiInfo.setReq_headers(reqHeaderList.toArray(reqHeaders));
+                    return;
                 } else {
                     //单参数
-                    singleParam(paramTag, nullAbleParamList.contains(paramTag.parameterName()), reqBodyForms);
+                    singleParam(paramTag, nullAbleParamList.contains(paramTag.parameterName()), reqForms);
                 }
             }
-            if (reqBodyForms.size() > 0){
-                ReqBodyForm[] reqBodyFormsArray = new ReqBodyForm[reqBodyForms.size()];
-                apiInfo.setReq_body_form( reqBodyForms.toArray(reqBodyFormsArray));
-                apiInfo.setRes_body("from");
+            if (reqForms.size() > 0){
+                ReqForm[] reqFormsArray = new ReqForm[reqForms.size()];
+                apiInfo.setReq_query( reqForms.toArray(reqFormsArray));
+                ReqHeader[] reqHeaders = new ReqHeader[1];
+                List<ReqHeader> reqHeaderList = Collections.singletonList(new ReqHeader("Content-Type","application/x-www-form-urlencoded"));
+                apiInfo.setReq_headers(reqHeaderList.toArray(reqHeaders));
             }
         }
     }
 
     //返回值
     private static void resp (String classBasePath, ClassDoc classDoc, Type type, JavaApiInfo apiInfo) {
-        System.out.println("返回参数 : ");
         BodyJson baseRespBodyJson = obj(classBasePath, type.asClassDoc());
         //对象
         BodyJson bodyJson = obj(classBasePath, classDoc);
         //二次处理
         if ( bodyJson != null && baseRespBodyJson!= null){
-            baseRespBodyJson.getProperties().get("data").setProperties(bodyJson);
+            baseRespBodyJson.getProperties().get("data").setProperties(bodyJson.getProperties());
+            baseRespBodyJson.getProperties().get("data").setType("object");
         }
         //列化 成 json字符串
         apiInfo.setRes_body(JSON.toJSONString(baseRespBodyJson));
@@ -137,28 +146,26 @@ public class JavaDocUse {
 
 
     //单参数
-    private static void singleParam (ParamTag paramTag, boolean nullAble,List<ReqBodyForm> reqBodyForms) {
+    private static void singleParam (ParamTag paramTag, boolean nullAble,List<ReqForm> reqForms) {
         //参数名称
         String parameterName = paramTag.parameterName();
         //参数注释
         String parameterComment = paramTag.parameterComment();
         //是否必传
-        System.out.println(parameterName + "   " + parameterComment + "   " + nullAble );
-        reqBodyForms.add(new ReqBodyForm(nullAble ? 1 : 0, parameterName, parameterComment));
+        reqForms.add(new ReqForm(nullAble ? 1 : 0, parameterName, parameterComment));
     }
 
     //单字段
-    private static BodyProperties singleField (FieldDoc fieldDoc) {
-        BodyProperties bodyProperties = new BodyProperties();
+    private static BodyJson singleField (FieldDoc fieldDoc) {
+        BodyJson bodyJson = new BodyJson();
         String type = fieldDoc.type().typeName();
         if ("List".equals(type) || "Set".equals(type)) {
             //集合
             type = "array";
         }
-        bodyProperties.setType(type);
-        bodyProperties.setDescription(fieldDoc.commentText());
-        System.out.println(fieldDoc.name() + "   " + type + "   " + fieldDoc.commentText());
-        return bodyProperties;
+        bodyJson.setType(type);
+        bodyJson.setDescription(fieldDoc.commentText());
+        return bodyJson;
     }
 
     //对象
@@ -172,31 +179,29 @@ public class JavaDocUse {
         for (ClassDoc classDoc : innerClassDoc) {
             //输出私有属性的注释
             FieldDoc[] fieldDocs = classDoc.fields(false);
-            System.out.println("属性参数 : ");
             for (FieldDoc fieldDoc : fieldDocs) {
-
-                BodyProperties bodyProperties = new BodyProperties();
+                BodyJson bodyProperties = new BodyJson();
                 if (fieldDoc.tags("@see").length == 1) {
                     SeeTag tag = (SeeTag) fieldDoc.tags("@see")[0];
-                    System.out.println(fieldDoc.name() + "    " +  fieldDoc.commentText() + "  " + fieldDoc.type().typeName() );
                     BodyJson linkBodyJson = obj(classBasePath, tag.referencedClass());
-                    String type = "obj";
+                    String type = "object";
                     //对象
                     if ("List".equals(fieldDoc.type().typeName()) || "Set".equals(fieldDoc.type().typeName())) {
                         //集合
                         type = "array";
                         bodyProperties.setItems(linkBodyJson);
                     }else {
-                        bodyProperties.setProperties(bodyJson);
+                        bodyProperties.setProperties(linkBodyJson.getProperties());
                     }
                     bodyProperties.setType(type);
+                    bodyProperties.setDescription(fieldDoc.commentText());
                     //对象
                 } else {
                     //单字段
                     bodyProperties = singleField(fieldDoc);
                 }
                 if (bodyJson.getProperties() == null ){
-                    bodyJson.setProperties(new HashMap<>());
+                    bodyJson.setProperties(new HashMap<>(fieldDocs.length));
                 }
                 bodyJson.getProperties().put(fieldDoc.name(), bodyProperties );
                 //取字段上的注解

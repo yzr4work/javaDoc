@@ -1,13 +1,19 @@
 package com.yzr.speechmatching.model;
 
+/**
+ * @author yzr
+ */
 public class RespModel<T> {
     private int code;
     private String msg;
     private T data;
-    final static int SUCCESS_CODE = 0;
-    final static String SUCCESS_MSG = "success";
-    final static int FAIL_CODE = 1;
-    final static String FAIL_MSG = "fail";
+
+    public RespModel<T> success(T t) {
+        this.data = t;
+        this.code = 0;
+        this.msg = "success";
+        return this;
+    }
 
     public int getCode () {
         return code;
@@ -33,19 +39,4 @@ public class RespModel<T> {
         this.data = data;
     }
 
-    public static RespModel success(Object data){
-        RespModel respModel = new RespModel();
-        respModel.setCode(SUCCESS_CODE);
-        respModel.setMsg(SUCCESS_MSG);
-        respModel.setData(data);
-        return respModel;
-    }
-
-    public static RespModel fail(Object data){
-        RespModel respModel = new RespModel();
-        respModel.setCode(FAIL_CODE);
-        respModel.setMsg(FAIL_MSG);
-        respModel.setData(data);
-        return respModel;
-    }
 }

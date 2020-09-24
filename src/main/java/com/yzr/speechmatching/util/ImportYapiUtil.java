@@ -10,10 +10,12 @@ import org.springframework.util.CollectionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 同步到Yapi工具类
+ * @author yzr
  */
 public class ImportYapiUtil {
 
@@ -66,9 +68,7 @@ public class ImportYapiUtil {
             javaApiInfo.setCatid(String.valueOf(catId));
             String resultStr = syncPostCall("/interface/save", RequestBody.create(JSON.toJSONString(javaApiInfo), MediaType.parse("application/json; charset=utf-8")));
             JSONObject resultJsonObject = JSON.parseObject(resultStr);
-            if ( 0 == resultJsonObject.getIntValue("errcode")){
-                return true;
-            }
+            return 0 == resultJsonObject.getIntValue("errcode");
         }
         return false;
     }
@@ -82,7 +82,7 @@ public class ImportYapiUtil {
                 .build();
         Call call = okHttpClient.newCall(request);
         Response response = call.execute();
-        return response.body().string();
+        return Objects.requireNonNull(response.body()).string();
     }
 
     public static String syncPostCall (String url, RequestBody requestBody) throws IOException {
@@ -93,7 +93,7 @@ public class ImportYapiUtil {
                 .build();
         Call call = okHttpClient.newCall(request);
         Response response = call.execute();
-        return response.body().string();
+        return Objects.requireNonNull(response.body()).string();
     }
 
 }

@@ -28,6 +28,11 @@ public class User {
      * @see Address 地址
      */
     private List<Address> cityList;
+    /**
+     * 首选地址
+     * @see Address 地址
+     */
+    private Address firstAddress;
 
     public String getUid () {
         return uid;
@@ -59,5 +64,13 @@ public class User {
 
     public void setCityList (List<Address> cityList) {
         this.cityList = cityList;
+    }
+
+    public Address getFirstAddress() {
+        return firstAddress;
+    }
+
+    public void setFirstAddress(Address firstAddress) {
+        this.firstAddress = firstAddress;
     }
 }
