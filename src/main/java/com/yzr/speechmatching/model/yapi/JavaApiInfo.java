@@ -66,6 +66,10 @@ public class JavaApiInfo {
      * 请求参数body格式
      */
     private String req_body_type;
+    /**
+     * 备注
+     */
+    private String desc;
 
     public String getToken() {
         return token;
@@ -189,5 +193,13 @@ public class JavaApiInfo {
 
     public void setReq_body_type(String req_body_type) {
         this.req_body_type = req_body_type;
+    }
+
+    public void setDesc(String desc) {
+        this.desc = desc;
+    }
+
+    public String getDesc() {
+        return desc;
     }
 }

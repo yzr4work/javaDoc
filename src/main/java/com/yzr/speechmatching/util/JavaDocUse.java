@@ -38,6 +38,14 @@ public class JavaDocUse {
     //入口
     private static void begin (String classBasePath, ClassDoc classDoc, JavaApiInfo apiInfo, String methodName) {
         MethodDoc[] methodDocs = classDoc.methods();
+        Tag[] authorList = classDoc.tags("author");
+        StringBuilder authorBuilder = new StringBuilder();
+        if (authorList != null && authorList.length > 0){
+            for (Tag tag : authorList) {
+                authorBuilder.append(tag.text());
+                authorBuilder.append(", ");
+            }
+        }
         for (MethodDoc methodDoc : methodDocs) {
             //fixme 暂不支持同名方法
             if (!methodName.equals(methodDoc.name())){
@@ -48,7 +56,24 @@ public class JavaDocUse {
             //接口方法的状态 完成 未完成
             apiInfo.setStatus( getMethodStatus(methodDoc));
             Tag[] nullablesTags = methodDoc.tags("nullable");
-
+            Tag[] authorTagList = methodDoc.tags("author");
+            StringBuilder methodAuthorBuilder = new StringBuilder();
+            if (authorTagList != null && authorTagList.length > 0){
+                for (Tag tag : authorTagList) {
+                    methodAuthorBuilder.append(tag.text());
+                    methodAuthorBuilder.append(", ");
+                }
+            }
+            String author = "";
+            if (methodAuthorBuilder.length() > 0){
+                author = methodAuthorBuilder.toString();
+            }else {
+                author = authorBuilder.toString();
+            }
+            if (author.length() > 1){
+                author = author.substring(0,author.length() - 2 );
+            }
+            apiInfo.setDesc(String.format("<p>作者: %s</p>", author));
             //req 处理请求参数
             req(classBasePath, methodDoc.tags("param"), nullablesTags.length == 1 ? nullablesTags[0] : null, apiInfo);
             //resp 返回参数处理
@@ -225,8 +250,7 @@ public class JavaDocUse {
         String linkClassPath = referencedClassDoc.qualifiedName();
         com.sun.tools.javadoc.Main.execute(new String[]{"-doclet",
                 Doclet.class.getName(),
-                "-encoding", "utf-8", "-private", "-classpath",
-                classBasePath,
+                "-encoding", "utf-8", "-private",
                 classBasePath.replace("/target/classes/", "") + "/src/main/java/" + linkClassPath.replace(".", "/") + ".java"});
         return rootDoc.classes();
     }
