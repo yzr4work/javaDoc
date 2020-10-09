@@ -62,6 +62,32 @@ public class ImportYapiUtil {
                     catId = cat.get_id();
                 }
             }
+        }else {
+            //之前存在文件夹 可能也存在接口文档
+            //尝试读取接口文档 获取之前写过的备注 将作者信息拼接进去
+            String listCatJsonStr = syncGetCall("/interface/list_cat", "token=" + javaApiInfo.getToken() + "&page=1&limit=100&catid=" + catId );
+            JSONObject listCatJsonObject = JSON.parseObject(listCatJsonStr);
+            if (listCatJsonObject.containsKey("data")){
+                List<JavaApiInfo> javaApiInfos = JSON.parseArray(listCatJsonObject.getJSONObject("data").getString("list"), JavaApiInfo.class);
+                if (!CollectionUtils.isEmpty(javaApiInfos)){
+                    javaApiInfos.stream().filter(apiInfo -> apiInfo.getPath().equals(javaApiInfo.getPath()) ).findFirst().ifPresent(apiInfo -> {
+                        try {
+                            String docJsonStr = syncGetCall("/interface/get", "token=" + javaApiInfo.getToken() + "&id=" + apiInfo.get_id() );
+                            JavaApiInfo oldJavaApiInfo = JSON.parseObject(JSON.parseObject(docJsonStr).getString("data"), JavaApiInfo.class);
+                            String oldDesc = oldJavaApiInfo.getDesc();
+                            String[] strings = oldDesc.split("<p>");
+                            String oldAuthorDesc = strings[strings.length-1];
+                            if (oldAuthorDesc.contains("作者")){
+                                javaApiInfo.setDesc(oldDesc.replace("<p>" + strings[strings.length-1], javaApiInfo.getDesc()));
+                            }else {
+                                javaApiInfo.setDesc(oldDesc + javaApiInfo.getDesc());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("getDoc is error patch is  " +  apiInfo.getPath());
+                        }
+                    });
+                }
+            }
         }
         if (catId > 0) {
             //导入数据
