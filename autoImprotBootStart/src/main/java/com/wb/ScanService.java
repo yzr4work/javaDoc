@@ -1,13 +1,8 @@
-package com.yzr.speechmatching;
+package com.wb;
 
-import com.yzr.speechmatching.model.yapi.JavaApiInfo;
-import com.yzr.speechmatching.util.JavaDocUse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.wb.util.JavaDocUse;
+import com.wb.yapi.JavaApiInfo;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -17,30 +12,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.yzr.speechmatching.util.JavaDocUse.show;
+import static com.wb.util.JavaDocUse.show;
 
-@SpringBootApplication
-public class SpeechMatchingApplication {
+public class ScanService {
 
-    public static void main (String[] args) {
-        SpringApplication.run(SpeechMatchingApplication.class, args);
-    }
 
-    @Autowired
-    private Environment env;
-
-    @Bean
-    public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
-        return args -> {
-            try {
-                scanControllerGenerateDoc(ctx);
-            } catch (Exception e) {
-                System.err.println("generateDoc is error " + e.getMessage());
-            }
-        };
-    }
-
-    private void scanControllerGenerateDoc(ApplicationContext ctx){
+    public void scanControllerGenerateDoc(Environment env, ApplicationContext ctx){
         //所有controller
         Map<String, Object> controllerBeansMap = ctx.getBeansWithAnnotation(Controller.class);
         controllerBeansMap.putAll(ctx.getBeansWithAnnotation(RestController.class));
@@ -135,10 +112,9 @@ public class SpeechMatchingApplication {
             finalToken.set(h5Token);
         }
         String classPath = controllerClass.getResource("/").getPath();
-        String[] strings = classPath.split("/classes");
         com.sun.tools.javadoc.Main.execute(new String[] {"-doclet",
                 JavaDocUse.Doclet.class.getName(),
-                "-encoding","utf-8","-classpath",classPath,
+                "-encoding","utf-8",
                 classPath.replace("/target/classes/","") + "/src/main/java/" +  controllerClass.getName().replace(".","/") + ".java"});
         JavaApiInfo javaApiInfo = new JavaApiInfo();
         javaApiInfo.setPath(controllerUrl);
@@ -151,6 +127,7 @@ public class SpeechMatchingApplication {
         javaApiInfo.setApplicationName(finalApplicationName);
         show(classPath, javaApiInfo,method.getName());
     }
+
 
 
 }

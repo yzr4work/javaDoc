@@ -7,14 +7,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
-import java.time.Year;
 
 /**
  * 测试controller
  * @author yzr11
  */
 @RestController
-@RequestMapping(value = {"/matching"})
+@RequestMapping("/matching")
 public class MatchingController {
 
     /**
@@ -26,7 +25,7 @@ public class MatchingController {
      * @nullable status,uid
      * @status false
      *
-     * @return  返回信息 {@link User }
+     * @return  返回信息 {@link com.yzr.speechmatching.model.User }
      */
     @PostMapping(value = {"/test"})
     public RespModel<User> test(HttpServletRequest request){

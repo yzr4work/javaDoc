@@ -1,18 +1,14 @@
-package com.yzr.speechmatching.util;
+package com.wb.util;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.javadoc.*;
-import com.yzr.speechmatching.model.yapi.BodyJson;
-import com.yzr.speechmatching.model.yapi.JavaApiInfo;
-import com.yzr.speechmatching.model.yapi.ReqForm;
-import com.yzr.speechmatching.model.yapi.ReqHeader;
+import com.wb.yapi.BodyJson;
+import com.wb.yapi.JavaApiInfo;
+import com.wb.yapi.ReqForm;
+import com.wb.yapi.ReqHeader;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,21 +38,6 @@ public class JavaDocUse {
     //入口
     private static void begin (String classBasePath, ClassDoc classDoc, JavaApiInfo apiInfo, String methodName) {
         MethodDoc[] methodDocs = classDoc.methods();
-        try {
-            Class<?> clazz = Class.forName(classDoc.qualifiedName());
-            RequestMapping[] requestMappingsOnClass = clazz.getAnnotationsByType(RequestMapping.class);
-            GetMapping[] getMappingsOnClass = clazz.getAnnotationsByType(GetMapping.class);
-            PostMapping[] postMappingsOnClass = clazz.getAnnotationsByType(PostMapping.class);
-            String[] controllerBaseUrl = null;
-            if (requestMappingsOnClass.length > 0){
-                controllerBaseUrl = requestMappingsOnClass[0].value();
-            }
-            if (getMappingsOnClass.length > 0){
-                controllerBaseUrl = getMappingsOnClass[0].value();
-            }
-            if (postMappingsOnClass.length > 0){
-                controllerBaseUrl = postMappingsOnClass[0].value();
-            }
         Tag[] authorList = classDoc.tags("author");
         StringBuilder authorBuilder = new StringBuilder();
         if (authorList != null && authorList.length > 0){
@@ -65,33 +46,10 @@ public class JavaDocUse {
                 authorBuilder.append(", ");
             }
         }
-        Method[] methods = clazz.getMethods();
         for (MethodDoc methodDoc : methodDocs) {
-            Method method = null;
-            for (Method method1 : methods) {
-                if (method1.getName().equals(methodDoc.name())){
-                    method = method1;
-                    break;
-                }
-            }
-            if (method == null){
+            //fixme 暂不支持同名方法
+            if (!methodName.equals(methodDoc.name())){
                 continue;
-            }
-            RequestMapping requestMappingOnMethod = method.getAnnotation(RequestMapping.class);
-            GetMapping getMappingOnMethod = method.getAnnotation(GetMapping.class);
-            PostMapping postMappingOnMethod = method.getAnnotation(PostMapping.class);
-            if (requestMappingOnMethod == null && getMappingOnMethod == null && postMappingOnMethod == null){
-                continue;
-            }
-            String[] url = null;
-            if (requestMappingOnMethod != null){
-                url = requestMappingOnMethod.value();
-            }
-            if (getMappingOnMethod != null ){
-                url = getMappingOnMethod.value();
-            }
-            if (postMappingOnMethod != null){
-                url = postMappingOnMethod.value();
             }
             //方法的注释
             apiInfo.setTitle(methodDoc.commentText());
@@ -140,9 +98,6 @@ public class JavaDocUse {
             } catch (IOException e) {
                 System.err.println("同步 yapi 平台发生IO异常 数据为 : " + JSON.toJSONString(apiInfo));
             }
-        }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         }
     }
 
