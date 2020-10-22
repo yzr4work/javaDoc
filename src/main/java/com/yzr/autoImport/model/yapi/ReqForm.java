@@ -1,4 +1,4 @@
-package com.yzr.speechmatching.model.yapi;
+package com.yzr.autoImport.model.yapi;
 
 /**
  * @author yzr

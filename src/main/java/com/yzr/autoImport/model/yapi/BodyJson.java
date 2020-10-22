@@ -1,4 +1,4 @@
-package com.yzr.speechmatching.model.yapi;
+package com.yzr.autoImport.model.yapi;
 
 import java.util.Map;
 
@@ -26,6 +26,10 @@ public class BodyJson {
      * 必须字段
      */
     private String[] required;
+
+    public BodyJson() {
+
+    }
 
 
     public String getType() {
@@ -66,5 +70,10 @@ public class BodyJson {
 
     public void setRequired(String[] required) {
         this.required = required;
+    }
+
+    public BodyJson(String type, String description) {
+        this.type = type;
+        this.description = description;
     }
 }

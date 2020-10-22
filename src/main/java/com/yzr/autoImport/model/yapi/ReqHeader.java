@@ -1,4 +1,4 @@
-package com.wb.yapi;
+package com.yzr.autoImport.model.yapi;
 
 public class ReqHeader {
     private final int required = 1;

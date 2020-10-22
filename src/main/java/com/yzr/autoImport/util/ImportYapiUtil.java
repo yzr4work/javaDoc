@@ -1,9 +1,9 @@
-package com.wb.util;
+package com.yzr.autoImport.util;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.wb.yapi.Cat;
-import com.wb.yapi.JavaApiInfo;
+import com.yzr.autoImport.model.yapi.Cat;
+import com.yzr.autoImport.model.yapi.JavaApiInfo;
 import okhttp3.*;
 import org.springframework.util.CollectionUtils;
 
@@ -42,7 +42,7 @@ public class ImportYapiUtil {
             if (catJsonObject.containsKey("data")){
                 catList = JSON.parseArray(catJsonObject.getString("data"), Cat.class);
             }
-            if (! CollectionUtils.isEmpty( catList)){
+            if (!CollectionUtils.isEmpty( catList)){
                 for (Cat cat : catList) {
                     if (javaApiInfo.getApplicationName().equals(cat.getName())){
                         catId = cat.get_id();

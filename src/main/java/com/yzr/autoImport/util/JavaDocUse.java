@@ -1,11 +1,11 @@
-package com.yzr.speechmatching.util;
+package com.yzr.autoImport.util;
 
 import com.alibaba.fastjson.JSON;
 import com.sun.javadoc.*;
-import com.yzr.speechmatching.model.yapi.BodyJson;
-import com.yzr.speechmatching.model.yapi.JavaApiInfo;
-import com.yzr.speechmatching.model.yapi.ReqForm;
-import com.yzr.speechmatching.model.yapi.ReqHeader;
+import com.yzr.autoImport.model.yapi.BodyJson;
+import com.yzr.autoImport.model.yapi.JavaApiInfo;
+import com.yzr.autoImport.model.yapi.ReqForm;
+import com.yzr.autoImport.model.yapi.ReqHeader;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

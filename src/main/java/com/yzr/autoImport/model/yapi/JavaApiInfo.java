@@ -1,4 +1,4 @@
-package com.yzr.speechmatching.model.yapi;
+package com.yzr.autoImport.model.yapi;
 
 public class JavaApiInfo {
     /**
@@ -70,6 +70,10 @@ public class JavaApiInfo {
      * 备注
      */
     private String desc;
+    /**
+     * 接口文档id
+     */
+    private int _id;
 
     public String getToken() {
         return token;
@@ -201,5 +205,13 @@ public class JavaApiInfo {
 
     public String getDesc() {
         return desc;
+    }
+
+    public int get_id () {
+        return _id;
+    }
+
+    public void set_id (int _id) {
+        this._id = _id;
     }
 }
