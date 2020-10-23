@@ -1,4 +1,4 @@
-package com.yzr.autoImport.model;
+package com.wanba.autoImport.model;
 
 import java.util.List;
 
@@ -6,27 +6,27 @@ public class ApiConfig {
     /**
      * 工程名称
      */
-    private String applicationName;
+    private String applicationName = "test";
     /**
      * h5工程token
      */
-    private String h5Token;
+    private String h5Token = "ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b";
     /**
      * api工程token
      */
-    private String apiToken;
+    private String apiToken = "ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b";
     /**
      * rpc工程token
      */
-    private String rpcToken;
+    private String rpcToken = "ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b";
     /**
      * manager工程token
      */
-    private String managerToken;
+    private String managerToken = "ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b";
     /**
      * game工程token
      */
-    private String gameToken;
+    private String gameToken = "ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b";
     /**
      * 扫描包集合
      */

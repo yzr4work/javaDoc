@@ -1,4 +1,4 @@
-package com.yzr.autoImport.model.yapi;
+package com.wanba.autoImport.model.yapi;
 
 /**
  * @author yzr
@@ -20,14 +20,19 @@ public class Cat {
      * 备注
      */
     private String desc;
+    /**
+     * token 创建文件夹时使用
+     */
+    private String token;
 
     public Cat() {
     }
 
-    public Cat(int project_id, String name, String desc) {
+    public Cat(int project_id, String name, String desc, String token) {
         this.project_id = project_id;
         this.name = name;
         this.desc = desc;
+        this.token = token;
     }
 
     public int getProject_id() {
@@ -60,5 +65,13 @@ public class Cat {
 
     public void setDesc(String desc) {
         this.desc = desc;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 }

@@ -1,4 +1,4 @@
-package com.yzr.autoImport.model.yapi;
+package com.wanba.autoImport.model.yapi;
 
 /**
  * @author yzr

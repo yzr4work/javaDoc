@@ -1,18 +1,17 @@
-package com.yzr.autoImport.util;
+package com.wanba.autoImport.util;
 
 import com.alibaba.fastjson.JSON;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.*;
-import com.yzr.autoImport.model.ApiConfig;
-import com.yzr.autoImport.model.yapi.BodyJson;
-import com.yzr.autoImport.model.yapi.JavaApiInfo;
-import com.yzr.autoImport.model.yapi.ReqForm;
-import com.yzr.autoImport.model.yapi.ReqHeader;
+import com.wanba.autoImport.model.ApiConfig;
+import com.wanba.autoImport.model.yapi.BodyJson;
+import com.wanba.autoImport.model.yapi.JavaApiInfo;
+import com.wanba.autoImport.model.yapi.ReqForm;
+import com.wanba.autoImport.model.yapi.ReqHeader;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,7 +25,8 @@ public class QdoxUse {
             builder.addSourceTree(new File(filePath));
             Collection<JavaClass> classes = builder.getClasses();
             for (JavaClass javaClass : classes) {
-                javaClassMap.put(javaClass.getPackageName() + "." + javaClass.getName(), javaClass);
+                javaClassMap.put(javaClass.getFullyQualifiedName(), javaClass);
+
             }
         }
         generateDoc(apiConfig);
@@ -40,24 +40,23 @@ public class QdoxUse {
             //获取类上面的注解
             List<JavaAnnotation> annotations = javaClass.getAnnotations();
             //type 代表不同的接口类型 0为正常的spring接口 1为旧微服务
-            int type = 0;
             for (JavaAnnotation annotation : annotations) {
                 String annotationName = annotation.getType().getValue();
                 //判断当前类是否是controller 或者是老的微服务
                 boolean isOldMS = "com.wb.microserver.MsFunction".equals(javaClass.getSuperJavaClass().getFullyQualifiedName());
                 if ("controller".equals(annotationName) ||
                         "RestController".equals(annotationName) ||
-                            "org.springframework.web.bind.annotation.RestController".equals(annotationName) ||
-                                "org.springframework.stereotype.Controller".equals(annotationName) ||
                                     isOldMS){
                     String reqPath = "";
                     //获取类上的接口路径
-                    if ("RequestMapping".equals(annotationName) ||
-                            "org.springframework.web.bind.annotation.RequestMapping".equals(annotationName)){
-                        if (annotation.getNamedParameter("value") != null) {
-                            String value = annotation.getNamedParameter("value").toString();
-                            reqPath = !StringUtils.isEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
+                    for (JavaAnnotation javaAnnotation : annotations) {
+                        if ("RequestMapping".equals(javaAnnotation.getType().getName()) ){
+                            if (javaAnnotation.getNamedParameter("value") != null) {
+                                String value = javaAnnotation.getNamedParameter("value").toString();
+                                reqPath = !StringUtils.isEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
+                            }
                         }
+
                     }
                     //处理方法
                     List<JavaMethod> methods = javaClass.getMethods();
@@ -83,10 +82,10 @@ public class QdoxUse {
                                 }else {
                                     if (methodAnnotation.getNamedParameter("value") != null) {
                                         String value = methodAnnotation.getNamedParameter("value").toString();
-                                        finalReqUrl += !StringUtils.isEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").replace("[","").replace("]",""): "";
+                                        finalReqUrl += (!StringUtils.isEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").replace("[","").replace("]",""): "").trim();
                                     }
                                 }
-                                if (postMappingA){
+                                if (postMappingA || (requestMappingA && "RequestMethod.POST".equals(methodAnnotation.getNamedParameter("method").toString()))){
                                     reqType = 1;
                                 }
                                 break;
@@ -114,7 +113,19 @@ public class QdoxUse {
                         }else {
                             javaApiInfo.setMethod("GET");
                         }
-                        javaApiInfo.setToken("ca70bcd413e4be11b970de7e18923cd8927cacf106d6c4ac7e8bf48cc14dc16b");
+                        String token = apiConfig.getRpcToken();
+                        if (apiConfig.getApplicationName().endsWith("api")){
+                            if (finalReqUrl.contains("web/webApi")){
+                                token = apiConfig.getH5Token();
+                            }else {
+                                token = apiConfig.getApiToken();
+                            }
+                        }else if(apiConfig.getApplicationName().endsWith("manager")){
+                            token = apiConfig.getManagerToken();
+                        }else if(apiConfig.getApplicationName().endsWith("game")){
+                            token = apiConfig.getGameToken();
+                        }
+                        javaApiInfo.setToken(token);
                         javaApiInfo.setApplicationName(apiConfig.getApplicationName());
                         //标题
                         String comment = method.getComment();
@@ -131,7 +142,7 @@ public class QdoxUse {
                                 methodAuthorBuilder.append(", ");
                             }
                         }
-                        String author = "";
+                        String author ;
                         if (methodAuthorBuilder.length() > 0){
                             author = methodAuthorBuilder.toString();
                         }else {
@@ -166,7 +177,7 @@ public class QdoxUse {
                         try {
                             boolean result = ImportYapiUtil.importToYapi(javaApiInfo);
                             System.out.println("同步接口 " + javaApiInfo.getPath() + " 结果 : " + result);
-                        } catch (IOException e) {
+                        } catch (Exception e) {
                             System.err.println("同步 yapi 平台发生IO异常 数据为 : " + JSON.toJSONString(javaApiInfo));
                         }
 
@@ -293,7 +304,9 @@ public class QdoxUse {
                     type = "array";
                     bodyProperties.setItems(linkBodyJson);
                 }else {
-                    bodyProperties.setProperties(linkBodyJson.getProperties());
+                    if (linkBodyJson != null){
+                        bodyProperties.setProperties(linkBodyJson.getProperties());
+                    }
                 }
                 bodyProperties.setType(type);
                 bodyProperties.setDescription(fieldDoc.getComment());
@@ -305,7 +318,7 @@ public class QdoxUse {
             if (bodyJson.getProperties() == null ){
                 bodyJson.setProperties(new HashMap<>(fields.size()));
             }
-            bodyJson.getProperties().put(fieldDoc.getComment(), bodyProperties );
+            bodyJson.getProperties().put(fieldDoc.getName(), bodyProperties );
             //取字段上的注解
             List<JavaAnnotation> annotations = fieldDoc.getAnnotations();
             List<JavaAnnotation> nullable = annotations.stream().filter(annotation ->

@@ -1,9 +1,9 @@
-package com.yzr.autoImport.util;
+package com.wanba.autoImport.util;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.yzr.autoImport.model.yapi.Cat;
-import com.yzr.autoImport.model.yapi.JavaApiInfo;
+import com.wanba.autoImport.model.yapi.Cat;
+import com.wanba.autoImport.model.yapi.JavaApiInfo;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -62,8 +62,8 @@ public class ImportYapiUtil {
         }
         if (catId < 0) {
             //如果没有文件夹 及创建文件夹
-            Cat cat = new Cat(projectId, javaApiInfo.getApplicationName(), javaApiInfo.getApplicationName());
-            String addCatJsonStr = syncPostCall("/interface/save",JSON.toJSONString(cat));
+            Cat cat = new Cat(projectId, javaApiInfo.getApplicationName(), javaApiInfo.getApplicationName(), javaApiInfo.getToken());
+            String addCatJsonStr = syncPostCall("/interface/add_cat",JSON.toJSONString(cat));
             JSONObject addCatJsonObject = JSON.parseObject(addCatJsonStr);
             if (addCatJsonObject.containsKey("data")) {
                 cat = JSON.parseObject(addCatJsonObject.getString("data"), Cat.class);
@@ -142,13 +142,10 @@ public class ImportYapiUtil {
         // 创建Httpclient对象
         CloseableHttpClient httpclient = HttpClients.createDefault();
         HttpPost httpPost = new HttpPost(BASE_URL + url);
-        httpPost.setHeader("Content-Type", "application/json;charset=UTF-8");
+        httpPost.addHeader("Content-Type", "application/json;charset=utf-8"); //添加请求头
         // 组织数据
-        StringEntity se = new StringEntity(requestBodyJson);
-        //设置编码格式
-        se.setContentEncoding("UTF-8");
-        //设置数据类型
-        se.setContentType("application/json");
+        StringEntity se = new StringEntity(requestBodyJson, "utf-8");
+
         //对于POST请求,把请求体填充进HttpPost实体.
         httpPost.setEntity(se);
         try {
