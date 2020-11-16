@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.wanba.autoImport.model.yapi.Cat;
 import com.wanba.autoImport.model.yapi.JavaApiInfo;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -12,7 +13,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.springframework.util.CollectionUtils;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -29,82 +29,41 @@ public class ImportYapiUtil {
 
     private static final String BASE_URL = "http://yapi.wb-intra.com/api";
 
-    public static boolean importToYapi(JavaApiInfo javaApiInfo) throws Exception {
-        int projectId = -1;
-        int catId = -1;
-        //获取项目信息
-        String projectJsonStr = syncGetCall("/project/get",new HashMap<String, String>(1){{put("token",javaApiInfo.getToken());}});
-        JSONObject projectJsonObject = JSON.parseObject(projectJsonStr);
-        if (projectJsonObject.containsKey("data")) {
-            JSONObject projectInfoJsonObject = JSON.parseObject(projectJsonObject.getString("data"));
-            if (projectInfoJsonObject.containsKey("_id")) {
-                projectId = projectInfoJsonObject.getIntValue("_id");
-            }
-        }
-        if (projectId > 0) {
-
-            //获取文件夹信息
-            int finalProjectId = projectId;
-            String catJsonStr = syncGetCall("/interface/getCatMenu",new HashMap<String, String>(2){{put("token",javaApiInfo.getToken()); put("id",String.valueOf(finalProjectId));}});
-            JSONObject catJsonObject = JSON.parseObject(catJsonStr);
-            List<Cat> catList = new ArrayList<>();
-            if (catJsonObject.containsKey("data")) {
-                catList = JSON.parseArray(catJsonObject.getString("data"), Cat.class);
-            }
-            if (!CollectionUtils.isEmpty(catList)) {
-                for (Cat cat : catList) {
-                    if (javaApiInfo.getApplicationName().equals(cat.getName())) {
-                        catId = cat.get_id();
-                        break;
-                    }
-                }
-            }
-        }
-        if (catId < 0) {
-            //如果没有文件夹 及创建文件夹
-            Cat cat = new Cat(projectId, javaApiInfo.getApplicationName(), javaApiInfo.getApplicationName(), javaApiInfo.getToken());
-            String addCatJsonStr = syncPostCall("/interface/add_cat",JSON.toJSONString(cat));
-            JSONObject addCatJsonObject = JSON.parseObject(addCatJsonStr);
-            if (addCatJsonObject.containsKey("data")) {
-                cat = JSON.parseObject(addCatJsonObject.getString("data"), Cat.class);
-                if (cat != null) {
-                    catId = cat.get_id();
-                }
-            }
-        } else {
-            //之前存在文件夹 可能也存在接口文档
-            //尝试读取接口文档 获取之前写过的备注 将作者信息拼接进去
-            int finalCatId = catId;
-            String listCatJsonStr = syncGetCall("/interface/list_cat", new HashMap<String, String>(4){{put("token",javaApiInfo.getToken()); put("page","1"); put("limit", "100"); put("catid",String.valueOf(finalCatId));}});
-            JSONObject listCatJsonObject = JSON.parseObject(listCatJsonStr);
-            if (listCatJsonObject.containsKey("data")) {
-                List<JavaApiInfo> javaApiInfos = JSON.parseArray(listCatJsonObject.getJSONObject("data").getString("list"), JavaApiInfo.class);
-                if (!CollectionUtils.isEmpty(javaApiInfos)) {
-                    javaApiInfos.stream().filter(apiInfo -> apiInfo.getPath().equals(javaApiInfo.getPath())).findFirst().ifPresent(apiInfo -> {
-                        try {
-                            String docJsonStr = syncGetCall("/interface/get",new HashMap<String, String>(2){{put("token",javaApiInfo.getToken()); put("id",String.valueOf(apiInfo.get_id()));}} );
-                            JavaApiInfo oldJavaApiInfo = JSON.parseObject(JSON.parseObject(docJsonStr).getString("data"), JavaApiInfo.class);
-                            String oldDesc = oldJavaApiInfo.getDesc();
-                            String[] strings = oldDesc.split("<p>");
-                            String oldAuthorDesc = strings[strings.length - 1];
-                            if (oldAuthorDesc.contains("作者")) {
-                                javaApiInfo.setDesc(oldDesc.replace("<p>" + strings[strings.length - 1], javaApiInfo.getDesc()));
-                            } else {
-                                javaApiInfo.setDesc(oldDesc + javaApiInfo.getDesc());
-                            }
-                        } catch (Exception e) {
-                            System.out.println("getDoc is error patch is  " + apiInfo.getPath());
+    public static boolean importToYapi(JavaApiInfo javaApiInfo, int catId) throws Exception {
+        //之前存在文件夹 可能也存在接口文档
+        //尝试读取接口文档 获取之前写过的备注 将作者信息拼接进去
+        String listCatJsonStr = syncGetCall("/interface/list_cat", new HashMap<String, String>(4){{put("token",javaApiInfo.getToken()); put("page","1"); put("limit", "100"); put("catid",String.valueOf(catId));}});
+        JSONObject listCatJsonObject = JSON.parseObject(listCatJsonStr);
+        if (listCatJsonObject.containsKey("data")) {
+            List<JavaApiInfo> javaApiInfos = JSON.parseArray(listCatJsonObject.getJSONObject("data").getString("list"), JavaApiInfo.class);
+            if (!CollectionUtils.isEmpty(javaApiInfos)) {
+                javaApiInfos.stream().filter(apiInfo -> apiInfo.getPath().equals(javaApiInfo.getPath())).findFirst().ifPresent(apiInfo -> {
+                    try {
+                        String docJsonStr = syncGetCall("/interface/get",new HashMap<String, String>(2){{put("token",javaApiInfo.getToken()); put("id",String.valueOf(apiInfo.get_id()));}} );
+                        JavaApiInfo oldJavaApiInfo = JSON.parseObject(JSON.parseObject(docJsonStr).getString("data"), JavaApiInfo.class);
+                        String oldDesc = oldJavaApiInfo.getDesc();
+                        String[] strings = oldDesc.split("<p>");
+                        String oldAuthorDesc = strings[strings.length - 1];
+                        if (oldAuthorDesc.contains("作者")) {
+                            javaApiInfo.setDesc(oldDesc.replace("<p>" + strings[strings.length - 1], javaApiInfo.getDesc()));
+                        } else {
+                            javaApiInfo.setDesc(oldDesc + javaApiInfo.getDesc());
                         }
-                    });
-                }
+                    } catch (Exception e) {
+                        System.out.println("getDoc is error patch is  " + apiInfo.getPath());
+                    }
+                });
             }
         }
+
         if (catId > 0) {
             //导入数据
             javaApiInfo.setCatid(String.valueOf(catId));
             String resultStr = syncPostCall( "/interface/save",JSON.toJSONString(javaApiInfo));
             JSONObject resultJsonObject = JSON.parseObject(resultStr);
             return 0 == resultJsonObject.getIntValue("errcode");
+        }else {
+            System.out.println("接口 " + javaApiInfo.getPath() + " 没有文件夹");
         }
         return false;
     }
@@ -157,6 +116,57 @@ public class ImportYapiUtil {
             httpclient.close();
         }
 
+    }
+
+    public static int getCatId(String token, String catName){
+        int projectId = -1;
+        int catId = -1;
+        //获取项目信息
+        try {
+            String projectJsonStr = syncGetCall("/project/get",new HashMap<String, String>(1){{put("token",token);}});
+            JSONObject projectJsonObject = JSON.parseObject(projectJsonStr);
+            if (projectJsonObject.containsKey("data")) {
+                JSONObject projectInfoJsonObject = JSON.parseObject(projectJsonObject.getString("data"));
+                if (projectInfoJsonObject.containsKey("_id")) {
+                    projectId = projectInfoJsonObject.getIntValue("_id");
+                }
+            }
+            if (projectId > 0) {
+
+                //获取文件夹信息
+                int finalProjectId = projectId;
+                String catJsonStr = syncGetCall("/interface/getCatMenu",new HashMap<String, String>(2){{put("token",token); put("id",String.valueOf(finalProjectId));}});
+                JSONObject catJsonObject = JSON.parseObject(catJsonStr);
+                List<Cat> catList = new ArrayList<>();
+                if (catJsonObject.containsKey("data")) {
+                    catList = JSON.parseArray(catJsonObject.getString("data"), Cat.class);
+                }
+                if (!CollectionUtils.isEmpty(catList)) {
+                    for (Cat cat : catList) {
+                        if ( catName.equals(cat.getName())) {
+                            catId = cat.get_id();
+                            break;
+                        }
+                    }
+                }
+            }
+            if (catId < 0) {
+                //如果没有文件夹 及创建文件夹
+                Cat cat = new Cat(projectId,  catName, catName, token);
+                String addCatJsonStr = syncPostCall("/interface/add_cat",JSON.toJSONString(cat));
+                JSONObject addCatJsonObject = JSON.parseObject(addCatJsonStr);
+                if (addCatJsonObject.containsKey("data")) {
+                    cat = JSON.parseObject(addCatJsonObject.getString("data"), Cat.class);
+                    if (cat != null) {
+                        catId = cat.get_id();
+                    }
+                }
+            }
+        }catch (Exception e){
+            System.out.println("创建文件夹 " + catName + "失败");
+            e.printStackTrace();
+        }
+        return catId;
     }
 
 }
