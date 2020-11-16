@@ -59,7 +59,7 @@ public class QdoxUse {
                     isOldMS = "com.wb.microserver.MsFunction".equals(javaClass.getSuperJavaClass().getFullyQualifiedName());
 
                 }
-                if ("controller".equals(annotationName) ||
+                if ("Controller".equals(annotationName) ||
                         "RestController".equals(annotationName) ||
                         isOldMS) {
                     apiCount = parseJavaDoc(apiConfig, apiCount, javaClass, annotations, isOldMS);
@@ -90,16 +90,28 @@ public class QdoxUse {
         String reqPath = "";
         //获取类上的接口路径
         for (JavaAnnotation javaAnnotation : annotations) {
-            if ("RequestMapping".equals(javaAnnotation.getType().getName())) {
+            if (!"org.springframework.web.bind.annotation.RequestMapping".equals(javaAnnotation.getType().getSimpleName()) || !"RequestMapping".equals(javaAnnotation.getType().getSimpleName())) {
+                //处理方法
+                apiCount = genderMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
+            }else {
                 if (javaAnnotation.getNamedParameter("value") != null) {
-                    String value = javaAnnotation.getNamedParameter("value").toString();
-                    reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
+                    List valueList = (LinkedList)javaAnnotation.getNamedParameter("value");
+                    if (CollectionUtils.isNotEmpty( valueList)){
+                        for (Object o : valueList) {
+                            String value = o.toString();
+                            reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
+                            // 处理方法
+                            apiCount = genderMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
+                        }
+                    }
                 }
             }
-
         }
-        //处理方法
-        List<JavaMethod> methods = javaClass.getMethods();
+
+        return apiCount;
+    }
+
+    private static int genderMethods(ApiConfig apiConfig, int apiCount, JavaClass javaClass, boolean isOldMs, String reqPath, List<JavaMethod> methods) {
         for (JavaMethod method : methods) {
             //私有方法跳过 或 没有注释的接口跳过
             if (method.isPrivate() || StringUtils.isEmpty(method.getComment())) {
@@ -111,6 +123,15 @@ public class QdoxUse {
             try {
                 //正常spring接口 需要获取方法上请求路径
                 if (!isOldMs) {
+                    // 处理旧微服务接口路径 从注释中获取
+                    DocletTag pathTag = method.getTagByName("path");
+                    if (pathTag != null) {
+                        finalReqUrl = pathTag.getValue();
+                    } else {
+                        //获取不到接口路径 跳出
+                        break;
+                    }
+                } else {
                     List<JavaAnnotation> methodAnnotations = method.getAnnotations();
                     for (JavaAnnotation methodAnnotation : methodAnnotations) {
                         if (methodAnnotation != null) {
@@ -121,8 +142,16 @@ public class QdoxUse {
                             //方法上没有路径注解 跳过
                             if (requestMappingA || postMappingA || getMappingA) {
                                 if (methodAnnotation.getNamedParameter("value") != null) {
-                                    String value = methodAnnotation.getNamedParameter("value").toString();
-                                    finalReqUrl += (!StringUtils.isEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").replace("[", "").replace("]", "") : "").trim();
+                                    List valueList = (LinkedList)methodAnnotation.getNamedParameter("value");
+                                    if (CollectionUtils.isNotEmpty( valueList)){
+                                        for (Object o : valueList) {
+                                            String value = o.toString();
+                                            reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
+                                            //接口路径
+                                            String path = finalReqUrl + reqPath;
+                                            finalGenderDoc(apiConfig, javaClass, method, reqType, path);
+                                        }
+                                    }
                                 }
                             }
                             Object controllerUrlMethod = methodAnnotation.getNamedParameter("method");
@@ -132,64 +161,11 @@ public class QdoxUse {
                             }
                         }
                     }
-                } else {
-                    // 处理旧微服务接口路径 从注释中获取
-                    DocletTag pathTag = method.getTagByName("path");
-                    if (pathTag != null) {
-                        finalReqUrl = pathTag.getValue();
-                    } else {
-                        //获取不到接口路径 跳出
-                        break;
-                    }
                 }
-                JavaApiInfo javaApiInfo = new JavaApiInfo();
 
-                StringBuilder authorBuilder = new StringBuilder();
-                genderAuthorInfo(javaClass.getTagsByName("author"), authorBuilder);
-                javaApiInfo.setPath(finalReqUrl);
-                if (reqType == 1) {
-                    javaApiInfo.setMethod("POST");
-                } else {
-                    javaApiInfo.setMethod("GET");
-                }
-                String token = apiConfig.getRpcToken();
-                int type = 2;
-                if (apiConfig.getApplicationName().endsWith("api")) {
-                    if (finalReqUrl.contains("web/webApi")) {
-                        token = apiConfig.getH5Token();
-                    } else {
-                        token = apiConfig.getApiToken();
-                    }
-                    type = 1;
-                } else if (apiConfig.getApplicationName().endsWith("manager")) {
-                    token = apiConfig.getManagerToken();
-                } else if (apiConfig.getApplicationName().endsWith("game")) {
-                    token = apiConfig.getGameToken();
-                }
-                if(token  == null || token.trim().length() == 0){
+                if (finalGenderDoc(apiConfig, javaClass, method, reqType, finalReqUrl)) {
                     break;
                 }
-                javaApiInfo.setToken(token);
-                javaApiInfo.setApplicationName(apiConfig.getApplicationName());
-                //创建文件夹
-                Integer catId = createCat(apiConfig, token);
-                //标题
-                String comment = method.getComment();
-                javaApiInfo.setTitle(comment);
-
-                //接口方法的状态 完成 未完成
-                javaApiInfo.setStatus(getMethodStatus(method));
-                //作者
-
-                buildAuthor(method, javaApiInfo, authorBuilder);
-
-                List<DocletTag> nullAblesTags = method.getTagsByName("nullable");
-                //参数处理
-                req(method.getTagsByName("param"), nullAblesTags.size() == 1 ? nullAblesTags.get(0) : null, javaApiInfo, type);
-                //返回值处理
-                genderResp(method, javaApiInfo, type);
-
-                submitImportTask(javaApiInfo, catId);
                 apiCount++;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -197,6 +173,58 @@ public class QdoxUse {
 
         }
         return apiCount;
+    }
+
+    private static boolean finalGenderDoc(ApiConfig apiConfig, JavaClass javaClass, JavaMethod method, int reqType, String finalReqUrl) {
+        JavaApiInfo javaApiInfo = new JavaApiInfo();
+
+        StringBuilder authorBuilder = new StringBuilder();
+        genderAuthorInfo(javaClass.getTagsByName("author"), authorBuilder);
+        javaApiInfo.setPath(finalReqUrl);
+        if (reqType == 1) {
+            javaApiInfo.setMethod("POST");
+        } else {
+            javaApiInfo.setMethod("GET");
+        }
+        String token = apiConfig.getRpcToken();
+        int type = 2;
+        if (apiConfig.getApplicationName().endsWith("api")) {
+            if (finalReqUrl.contains("web/webApi")) {
+                token = apiConfig.getH5Token();
+            } else {
+                token = apiConfig.getApiToken();
+            }
+            type = 1;
+        } else if (apiConfig.getApplicationName().endsWith("manager")) {
+            token = apiConfig.getManagerToken();
+        } else if (apiConfig.getApplicationName().endsWith("game")) {
+            token = apiConfig.getGameToken();
+        }
+        if(token  == null || token.trim().length() == 0){
+            return true;
+        }
+        javaApiInfo.setToken(token);
+        javaApiInfo.setApplicationName(apiConfig.getApplicationName());
+        //创建文件夹
+        Integer catId = createCat(apiConfig, token);
+        //标题
+        String comment = method.getComment();
+        javaApiInfo.setTitle(comment);
+
+        //接口方法的状态 完成 未完成
+        javaApiInfo.setStatus(getMethodStatus(method));
+        //作者
+
+        buildAuthor(method, javaApiInfo, authorBuilder);
+
+        List<DocletTag> nullAblesTags = method.getTagsByName("nullable");
+        //参数处理
+        req(method.getTagsByName("param"), nullAblesTags.size() == 1 ? nullAblesTags.get(0) : null, javaApiInfo, type);
+        //返回值处理
+        genderResp(method, javaApiInfo, type);
+
+        submitImportTask(javaApiInfo, catId);
+        return false;
     }
 
 
