@@ -50,7 +50,6 @@ public class QdoxUse {
             JavaClass javaClass = m.getValue();
             //获取类上面的注解
             List<JavaAnnotation> annotations = javaClass.getAnnotations();
-            //type 代表不同的接口类型 0为正常的spring接口 1为旧微服务
             for (JavaAnnotation annotation : annotations) {
                 String annotationName = annotation.getType().getValue();
                 //判断当前类是否是controller 或者是老的微服务
@@ -62,7 +61,7 @@ public class QdoxUse {
                 if ("Controller".equals(annotationName) ||
                         "RestController".equals(annotationName) ||
                         isOldMS) {
-                    apiCount = parseJavaDoc(apiConfig, apiCount, javaClass, annotations, isOldMS);
+                    apiCount = pathOnClass(apiConfig, apiCount, javaClass, annotations, isOldMS);
 
                 }
             }
@@ -86,32 +85,46 @@ public class QdoxUse {
         }
     }
 
-    private static int parseJavaDoc(ApiConfig apiConfig, int apiCount, JavaClass javaClass, List<JavaAnnotation> annotations, boolean isOldMs) {
+    private static int pathOnClass(ApiConfig apiConfig, int apiCount, JavaClass javaClass, List<JavaAnnotation> annotations, boolean isOldMs) {
         String reqPath = "";
+        //类上是否有requestMapping注解
+        boolean requestMappingOnClass = false;
         //获取类上的接口路径
         for (JavaAnnotation javaAnnotation : annotations) {
-            if (!"org.springframework.web.bind.annotation.RequestMapping".equals(javaAnnotation.getType().getSimpleName()) || !"RequestMapping".equals(javaAnnotation.getType().getSimpleName())) {
-                //处理方法
-                apiCount = genderMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
-            }else {
-                if (javaAnnotation.getNamedParameter("value") != null) {
-                    List valueList = (LinkedList)javaAnnotation.getNamedParameter("value");
-                    if (CollectionUtils.isNotEmpty( valueList)){
-                        for (Object o : valueList) {
-                            String value = o.toString();
-                            reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
-                            // 处理方法
-                            apiCount = genderMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
+            if ( "RequestMapping".equals(javaAnnotation.getType().getValue())) {
+                Object parameter = javaAnnotation.getNamedParameter("value");
+                if (parameter != null) {
+                    requestMappingOnClass = true;
+                    //参数是集合类型
+                    if (parameter instanceof LinkedList){
+                        List valueList = (LinkedList) parameter;
+                        if (CollectionUtils.isNotEmpty( valueList)){
+                            for (Object o : valueList) {
+                                String value = o.toString();
+                                reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").trim() : "";
+                                // 处理方法
+                                apiCount = pathOnMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
+                            }
                         }
+                    }else {
+                        String value  = parameter.toString();
+                        reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").trim() : "";
+                        // 处理方法
+                        apiCount = pathOnMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
                     }
                 }
             }
+        }
+        //类上没有requestMapping注解
+        if (!requestMappingOnClass){
+            //处理方法
+            apiCount = pathOnMethods(apiConfig, apiCount, javaClass, isOldMs, reqPath,  javaClass.getMethods());
         }
 
         return apiCount;
     }
 
-    private static int genderMethods(ApiConfig apiConfig, int apiCount, JavaClass javaClass, boolean isOldMs, String reqPath, List<JavaMethod> methods) {
+    private static int pathOnMethods(ApiConfig apiConfig, int apiCount, JavaClass javaClass, boolean isOldMs, String reqPath, List<JavaMethod> methods) {
         for (JavaMethod method : methods) {
             //私有方法跳过 或 没有注释的接口跳过
             if (method.isPrivate() || StringUtils.isEmpty(method.getComment())) {
@@ -122,11 +135,12 @@ public class QdoxUse {
             String finalReqUrl = reqPath;
             try {
                 //正常spring接口 需要获取方法上请求路径
-                if (!isOldMs) {
+                if (isOldMs) {
                     // 处理旧微服务接口路径 从注释中获取
                     DocletTag pathTag = method.getTagByName("path");
                     if (pathTag != null) {
-                        finalReqUrl = pathTag.getValue();
+                        //生成文档
+                        buildDoc(apiConfig, javaClass, method, reqType, pathTag.getValue());
                     } else {
                         //获取不到接口路径 跳出
                         break;
@@ -140,32 +154,38 @@ public class QdoxUse {
                             boolean postMappingA = "PostMapping".equals(methodAnnotationName) || "org.springframework.web.bind.annotation.PostMapping".equals(methodAnnotationName);
                             boolean getMappingA = "GetMapping".equals(methodAnnotationName) || "org.springframework.web.bind.annotation.GetMapping".equals(methodAnnotationName);
                             //方法上没有路径注解 跳过
-                            if (requestMappingA || postMappingA || getMappingA) {
-                                if (methodAnnotation.getNamedParameter("value") != null) {
-                                    List valueList = (LinkedList)methodAnnotation.getNamedParameter("value");
-                                    if (CollectionUtils.isNotEmpty( valueList)){
-                                        for (Object o : valueList) {
-                                            String value = o.toString();
-                                            reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "") : "";
-                                            //接口路径
-                                            String path = finalReqUrl + reqPath;
-                                            finalGenderDoc(apiConfig, javaClass, method, reqType, path);
-                                        }
-                                    }
-                                }
-                            }
                             Object controllerUrlMethod = methodAnnotation.getNamedParameter("method");
                             boolean requestMappingWithPostMethod = requestMappingA && controllerUrlMethod != null && "RequestMethod.POST".equals(controllerUrlMethod.toString());
                             if (postMappingA || requestMappingWithPostMethod) {
                                 reqType = 1;
                             }
+                            if (requestMappingA || postMappingA || getMappingA) {
+                                Object parameterOnMethod = methodAnnotation.getNamedParameter("value");
+                                if (parameterOnMethod != null) {
+                                    if (parameterOnMethod instanceof LinkedList){
+                                        List valueList = (LinkedList) parameterOnMethod;
+                                        if (CollectionUtils.isNotEmpty( valueList)){
+                                            for (Object o : valueList) {
+                                                String value = o.toString();
+                                                reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").trim() : "";
+                                                //接口路径
+                                                String path = finalReqUrl + reqPath;
+                                                buildDoc(apiConfig, javaClass, method, reqType, path);
+                                            }
+                                        }
+                                    }else {
+                                        String value = parameterOnMethod.toString();
+                                        reqPath = StringUtils.isNotEmpty(value) ? value.replaceAll("'", "").replaceAll("\"", "").trim() : "";
+                                        //接口路径
+                                        String path = finalReqUrl + reqPath;
+                                        buildDoc(apiConfig, javaClass, method, reqType, path);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                if (finalGenderDoc(apiConfig, javaClass, method, reqType, finalReqUrl)) {
-                    break;
-                }
                 apiCount++;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -175,7 +195,7 @@ public class QdoxUse {
         return apiCount;
     }
 
-    private static boolean finalGenderDoc(ApiConfig apiConfig, JavaClass javaClass, JavaMethod method, int reqType, String finalReqUrl) {
+    private static void buildDoc(ApiConfig apiConfig, JavaClass javaClass, JavaMethod method, int reqType, String finalReqUrl) {
         JavaApiInfo javaApiInfo = new JavaApiInfo();
 
         StringBuilder authorBuilder = new StringBuilder();
@@ -201,7 +221,7 @@ public class QdoxUse {
             token = apiConfig.getGameToken();
         }
         if(token  == null || token.trim().length() == 0){
-            return true;
+            return ;
         }
         javaApiInfo.setToken(token);
         javaApiInfo.setApplicationName(apiConfig.getApplicationName());
@@ -221,10 +241,9 @@ public class QdoxUse {
         //参数处理
         req(method.getTagsByName("param"), nullAblesTags.size() == 1 ? nullAblesTags.get(0) : null, javaApiInfo, type);
         //返回值处理
-        genderResp(method, javaApiInfo, type);
+        boolean respType = genderResp(method, javaApiInfo, type);
 
-        submitImportTask(javaApiInfo, catId);
-        return false;
+        submitImportTask(javaApiInfo, catId, respType);
     }
 
 
@@ -238,10 +257,10 @@ public class QdoxUse {
         return catId;
     }
 
-    private static void submitImportTask(JavaApiInfo javaApiInfo, Integer finalCatId) {
+    private static void submitImportTask(JavaApiInfo javaApiInfo, Integer finalCatId, boolean respType) {
         threadPoolExecutor.submit(() -> {
             try {
-                boolean result = ImportYapiUtil.importToYapi(javaApiInfo, finalCatId);
+                boolean result = ImportYapiUtil.importToYapi(javaApiInfo, finalCatId, respType);
                 System.out.println("同步接口 " + javaApiInfo.getPath() + " 结果 : " + result + " 文件夹 : " + javaApiInfo.getApplicationName());
             } catch (Exception e) {
                 System.out.println("接口 同步失败 : " + javaApiInfo.getPath());
@@ -251,7 +270,7 @@ public class QdoxUse {
         });
     }
 
-    private static void genderResp(JavaMethod method, JavaApiInfo javaApiInfo, int type) {
+    private static boolean genderResp(JavaMethod method, JavaApiInfo javaApiInfo, int type) {
         List<DocletTag> returnTags = method.getTagsByName("return");
         String returnLink = null;
         DefaultJavaParameterizedType returns = (DefaultJavaParameterizedType) method.getReturns();
@@ -272,7 +291,7 @@ public class QdoxUse {
             }
             //resp 处理返回参数
         }
-        resp(returnName, returnLink, javaApiInfo, type);
+        return resp(returnName, returnLink, javaApiInfo, type);
     }
 
     private static void genderAuthorInfo(List<DocletTag> author, StringBuilder authorBuilder) {
@@ -373,8 +392,16 @@ public class QdoxUse {
         return bodyJson1;
     }
 
-    //返回值
-    private static void resp(String returnName, String returnLink, JavaApiInfo apiInfo, int type) {
+
+    /**
+     * 生成返回值信息 并返回 当时返回值是否进行覆盖
+     * @param returnName 返回对象 最外层
+     * @param returnLink 返回对象 链接对象
+     * @param apiInfo 接口文档信息封装对象
+     * @param type 接口类型 1 2
+     * @return true 需要使用平台返回值信息覆盖 false 不需要使用平台返回知己信息覆盖
+     */
+    private static boolean resp(String returnName, String returnLink, JavaApiInfo apiInfo, int type) {
         BodyJson baseRespBodyJson = new BodyJson();
         baseRespBodyJson.setType("object");
         HashMap<String, BodyJson> map = new HashMap<>(3);
@@ -398,7 +425,7 @@ public class QdoxUse {
         BodyJson bodyJson = obj(returnLink);
         if (!"MsRpcResponse".equals(returnName) && !"MsResponse".equals(returnName) && !"HttpRespBase".equals(returnName) && !"ManagerResponse".equals(returnName)) {
             apiInfo.setRes_body(JSON.toJSONString(obj(returnName)));
-            return;
+            return bodyJson == null;
         }
         //二次处理
         if (bodyJson != null) {
@@ -407,6 +434,7 @@ public class QdoxUse {
         }
         //列化 成 json字符串
         apiInfo.setRes_body(JSON.toJSONString(baseRespBodyJson));
+        return bodyJson == null ;
     }
 
     //单参数

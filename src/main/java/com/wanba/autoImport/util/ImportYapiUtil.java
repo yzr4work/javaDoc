@@ -29,7 +29,7 @@ public class ImportYapiUtil {
 
     private static final String BASE_URL = "http://yapi.wb-intra.com/api";
 
-    public static boolean importToYapi(JavaApiInfo javaApiInfo, int catId) throws Exception {
+    public static boolean importToYapi(JavaApiInfo javaApiInfo, int catId, boolean respType) throws Exception {
         //之前存在文件夹 可能也存在接口文档
         //尝试读取接口文档 获取之前写过的备注 将作者信息拼接进去
         String listCatJsonStr = syncGetCall("/interface/list_cat", new HashMap<String, String>(4){{put("token",javaApiInfo.getToken()); put("page","1"); put("limit", "100"); put("catid",String.valueOf(catId));}});
@@ -48,6 +48,10 @@ public class ImportYapiUtil {
                             javaApiInfo.setDesc(oldDesc.replace("<p>" + strings[strings.length - 1], javaApiInfo.getDesc()));
                         } else {
                             javaApiInfo.setDesc(oldDesc + javaApiInfo.getDesc());
+                        }
+                        //需要使用接口平台返回值覆盖
+                        if (respType){
+                            javaApiInfo.setRes_body(oldJavaApiInfo.getRes_body());
                         }
                     } catch (Exception e) {
                         System.out.println("getDoc is error patch is  " + apiInfo.getPath());
