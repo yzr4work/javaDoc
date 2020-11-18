@@ -207,6 +207,7 @@ public class QdoxUse {
             javaApiInfo.setMethod("GET");
         }
         String token = apiConfig.getRpcToken();
+        boolean isRpc = false;
         int type = 2;
         if (apiConfig.getApplicationName().endsWith("api")) {
             if (finalReqUrl.contains("web/webApi")) {
@@ -215,10 +216,13 @@ public class QdoxUse {
                 token = apiConfig.getApiToken();
             }
             type = 1;
+            isRpc = false;
         } else if (apiConfig.getApplicationName().endsWith("manager")) {
             token = apiConfig.getManagerToken();
+            isRpc = false;
         } else if (apiConfig.getApplicationName().endsWith("game")) {
             token = apiConfig.getGameToken();
+            isRpc = false;
         }
         if(token  == null || token.trim().length() == 0){
             return ;
@@ -239,7 +243,7 @@ public class QdoxUse {
 
         List<DocletTag> nullAblesTags = method.getTagsByName("nullable");
         //参数处理
-        req(method.getTagsByName("param"), nullAblesTags.size() == 1 ? nullAblesTags.get(0) : null, javaApiInfo, type);
+        req(method.getTagsByName("param"), nullAblesTags.size() == 1 ? nullAblesTags.get(0) : null, javaApiInfo, type, isRpc);
         //返回值处理
         boolean respType = genderResp(method, javaApiInfo, type);
 
@@ -315,7 +319,7 @@ public class QdoxUse {
 
 
     //请求参数
-    private static void req(List<DocletTag> methodParams, DocletTag nullAbleTag, JavaApiInfo apiInfo, int type) {
+    private static void req(List<DocletTag> methodParams, DocletTag nullAbleTag, JavaApiInfo apiInfo, int type, boolean isRpc) {
         List<String> nullAbleParamList = new ArrayList<>();
         if (nullAbleTag != null) {
             String nullTagParamStr = nullAbleTag.getValue();
@@ -338,7 +342,21 @@ public class QdoxUse {
                         //基础类型
                         singleParam(methodParam, reqForms, nullAbleParamList);
                     } else {
-                        bodyJson = getReqBodyJson(apiInfo, nullAbleParamList, bodyJson, bodyRequiredList, link, split, paramName);
+                        if (isRpc){
+                            bodyJson = getReqBodyJson(apiInfo, nullAbleParamList, bodyJson, bodyRequiredList, link, split, paramName);
+                        }else {
+                            bodyJson = obj(link);
+                            //对象
+                            apiInfo.setReq_body_is_json_schema(true);
+                            apiInfo.setRes_body("json");
+                            //序列化 成 json字符串
+                            ReqHeader[] reqHeaders = new ReqHeader[1];
+                            List<ReqHeader> reqHeaderList = Collections.singletonList(new ReqHeader("Content-Type","application/json"));
+                            apiInfo.setReq_body_type("json");
+                            apiInfo.setReq_headers(reqHeaderList.toArray(reqHeaders));
+                            break;
+                        }
+
                     }
                 }
             }
